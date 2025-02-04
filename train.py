@@ -1,6 +1,6 @@
 import unittest
 import ray
-from env.prisoner_guard_env import PrisonerGuardEnv
+from practice_rays.prisoner_guard_env import PrisonerGuardEnv
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
