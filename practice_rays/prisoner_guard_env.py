@@ -55,6 +55,8 @@ class PrisonerGuardEnv(MultiAgentEnv):
         self.max_steps: int = 100
         self.spawn_agents()
         self.current_player: str = next(self.agent_iter)
+        self.prisoner_wins: int = 0
+        self.guard_wins: int = 0
 
     def spawn_agents(self):
         self.prisoner_x: int = 0  # np.random.randint(MIN_X, MAX_X)
@@ -63,8 +65,8 @@ class PrisonerGuardEnv(MultiAgentEnv):
         self.guard_x: int = np.random.randint(MIN_X, MAX_X)
         self.guard_y: int = np.random.randint(MIN_Y, MAX_Y)
 
-        self.goal_x = 6
-        self.goal_y = 6
+        self.goal_x:int  = 6
+        self.goal_y:int  = 6
 
     def reset(self, *, seed=None, options=None) -> Dict[str, np.ndarray]:
         self.start_time = 0
@@ -126,22 +128,27 @@ class PrisonerGuardEnv(MultiAgentEnv):
             rewards["guard"] = 1
             # Terminate the entire episode (for all agents) once 10 moves have been made.
             terminateds = {"__all__": True}
+            print("Guard has caught the prisoner")
         elif self.prisoner_x == self.goal_x and self.prisoner_y == self.goal_y:
             rewards["prisoner"] = 1
             rewards["guard"] = -1
             terminateds = {"__all__": True}
-
+            print("Prisoner has escaped")
         elif self.is_out_of_bounds(self.prisoner_x, self.prisoner_y):
             rewards["prisoner"] = -1
             rewards["guard"] = 1
             terminateds = {"__all__": True}
+            print("Prisoner is out of bounds")
         elif self.is_out_of_bounds(self.guard_x, self.guard_y):
             rewards["prisoner"] = 1
             rewards["guard"] = -1
             terminateds = {"__all__": True}
-
+            print("Guard is out of bounds")
         if self.start_time <= self.max_steps:
+            rewards = {agent: 0 for agent in self.agents}
+
             terminateds = {"__all__": True}
+            print("Max steps reached")
 
         observations = {agent: self.observe(agent) for agent in self.agents}
         infos = {agent: {} for agent in self.agents}

@@ -1,6 +1,7 @@
 import unittest
 import ray
 from practice_rays.prisoner_guard_env import PrisonerGuardEnv
+from practice_rays.callbacks import EpisodeReturn, ExampleEnvCallback
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
@@ -25,7 +26,8 @@ config = (
             "guard": (None, guard_obs, guard_act, None),
         },
         # Simple mapping - each agent gets its own policy
-        policy_mapping_fn=lambda agent_id, episode, **kwargs: agent_id,
+        policy_mapping_fn=lambda agent_id, episode, 
+            **kwargs: agent_id,
         # Different hyperparameters for each agent type
         algorithm_config_overrides_per_module={
             "prisoner": PPOConfig.overrides(gamma=0.85),
@@ -38,6 +40,12 @@ config = (
             "guard": RLModuleSpec(),
         }),
     )
+    .training(
+        lr=tune.grid_search([0.01, 0.001]),
+    )
+    .callbacks(
+        callbacks_class=[EpisodeReturn, ExampleEnvCallback],
+    )
 )
 
 # algo = config.build()
@@ -45,14 +53,11 @@ config = (
 
 # train with tune
 # https://docs.ray.io/en/latest/tune/tutorials/tune-output.html
-run_config = RunConfig(
-)
-tuner = tune.run(
+
+
+tuner = tune.Tuner(
     "PPO",
-    config=config,
-    stop={"training_iteration": 10},
-    num_samples=2,
-    storage_path="~/ray_results",
+    param_space=config
 )
 
-results = tuner.fit()
+tuner.fit()

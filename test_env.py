@@ -1,5 +1,8 @@
 import unittest
-from env.prisoner_guard_env import PrisonerGuardEnv
+#from .prisoner_guard_env import PrisonerGuardEnv
+from practice_rays.prisoner_guard_env import PrisonerGuardEnv
+from practice_rays.callbacks import EpisodeReturn, ExampleEnvCallback
+from practice_rays.hiearchial_env import HierarchicalEnv
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
@@ -41,39 +44,48 @@ class TestGeneratedData(unittest.TestCase):
             if terminateds['__all__']:
                 break
 
-    def test_train(self):
+    # def test_train(self):
 
-        prisoner_obs = self.test_env.observation_spaces["prisoner"]
-        prisoner_act = self.test_env.action_spaces["prisoner"]
-        guard_obs = self.test_env.observation_spaces["guard"]
-        guard_act = self.test_env.action_spaces["guard"]
-        config = (
-            PPOConfig()
-            # Use your custom class directly
-            .environment(env=PrisonerGuardEnv)
-            .multi_agent(
-                policies={
-                    "prisoner": (None, prisoner_obs, prisoner_act, None),
-                    "guard": (None, guard_obs, guard_act, None),
-                },
-                # Simple mapping - each agent gets its own policy
-                policy_mapping_fn=lambda agent_id, episode, **kwargs: agent_id,
-                # Different hyperparameters for each agent type
-                algorithm_config_overrides_per_module={
-                    "prisoner": PPOConfig.overrides(gamma=0.85),
-                    "guard": PPOConfig.overrides(lr=0.00001),
-                },
-            )
-            .rl_module(
-                rl_module_spec=MultiRLModuleSpec(rl_module_specs={
-                    "prisoner": RLModuleSpec(),
-                    "guard": RLModuleSpec(),
-                }),
-            )
-        )
+    #     prisoner_obs = self.test_env.observation_spaces["prisoner"]
+    #     prisoner_act = self.test_env.action_spaces["prisoner"]
+    #     guard_obs = self.test_env.observation_spaces["guard"]
+    #     guard_act = self.test_env.action_spaces["guard"]
+    #     config = (
+    #         PPOConfig()
+    #         # Use your custom class directly
+    #         .environment(env=PrisonerGuardEnv)
+    #         .multi_agent(
+    #             policies={
+    #                 "prisoner": (None, prisoner_obs, prisoner_act, None),
+    #                 "guard": (None, guard_obs, guard_act, None),
+    #             },
+    #             # Simple mapping - each agent gets its own policy
+    #             policy_mapping_fn=lambda agent_id, episode, **kwargs: agent_id,
+    #             # Different hyperparameters for each agent type
+    #             algorithm_config_overrides_per_module={
+    #                 "prisoner": PPOConfig.overrides(gamma=0.85),
+    #                 "guard": PPOConfig.overrides(lr=0.00001),
+    #             },
+    #         )
+    #         .rl_module(
+    #             rl_module_spec=MultiRLModuleSpec(rl_module_specs={
+    #                 "prisoner": RLModuleSpec(),
+    #                 "guard": RLModuleSpec(),
+    #             }),
+    #         )
+    #     )
 
-        algo = config.build()
-        print(algo.train())
+    #     algo = config.build()
+    #     print(algo.train())
+    
+    def test_hrl(self):
+        env = HierarchicalEnv(env_config=None)
+        env.reset()
+        n_steps = 30
+        
+        for _ in range(n_steps):
+            action = env.action_spaces[env.current_player].sample()
+            print("action: ", action)
 
 
 if __name__ == '__main__':
