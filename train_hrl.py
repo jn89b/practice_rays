@@ -134,9 +134,7 @@ def train_heuristic_hrl() -> None:
         checkpoint_config=tune.CheckpointConfig(
             checkpoint_frequency=20,  # Save every n iterations
             checkpoint_at_end=True,  # Always save final checkpoint
-            num_to_keep=5,  # Keep only the top n checkpoints
-            checkpoint_score_attribute="episode_reward_mean",  # Sort by highest reward
-            checkpoint_score_order="max",  # Save only the best
+            num_to_keep=5,  # Keep only the top n checkpoint
         ),
     )
     tuner = tune.Tuner("PPO", param_space=config,
@@ -147,32 +145,15 @@ def train_heuristic_hrl() -> None:
 def train_ppo_mask_hrl():
     """
     Pass
-    """
-    # # Configure the PPO algorithm
-    # config = (
-    #     PPOConfig()
-    #     .environment(env="mask_env")
-    #     .multi_agent(
-    #         policies={
-    #             "high_level_agent": (None, high_level_obs_space, high_level_act_space, {}),
-    #             "low_attack_agent": (
-    #                 None,
-    #                 low_attk_obs_space,
-    #                 low_attk_act_space,
-    #                 {"model": {"custom_model": "masked_action_model"}}
-    #             ),
-    #             "low_avoid_agent": (
-    #                 None,
-    #                 low_avoid_obs_space,
-    #                 low_avoid_act_space,
-    #                 {"model": {"custom_model": "masked_action_model"}}
-    #             ),
-    #         },
-    #         policy_mapping_fn=policy_mapping_fn
-    #     )
-    #     .resources(num_gpus=1)
-    # )
 
+    This is how you would set up a training environment
+    for maskable PPO agents in a HRL environment.
+
+    Biggest thing you want to look at is look at how
+    rl_module is set up in the config. This is where
+    you can set up the different RL modules for each
+    agent in the environment
+    """
     mask_env = ActionMaskingHRLEnv(env_config=None)
     high_level_obs_space = mask_env.observation_spaces['high_level_agent']
     high_level_act_space = mask_env.action_spaces['high_level_agent']
