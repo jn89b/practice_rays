@@ -13,6 +13,7 @@ from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from practice_rays.hiearchial_env import HiearchialEnvV2 as HierarchicalEnv
 from practice_rays.hiearchial_env import ActionMaskingHRLEnv
+from practice_rays.normalize_wrapper import NormalizeObservationWrapper
 from ray.rllib.examples.envs.classes.six_room_env import (
     HierarchicalSixRoomEnv
 )
@@ -23,6 +24,9 @@ from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.torch_utils import FLOAT_MAX, FLOAT_MIN
 from ray.rllib.models import ModelCatalog
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
+from ray.rllib.connectors.env_to_module.mean_std_filter import MeanStdFilter
+
+import numpy as np
 
 
 class TorchMaskedActions(TorchModelV2, nn.Module):
@@ -80,15 +84,6 @@ def create_env(config):
 # Register the custom model
 ModelCatalog.register_custom_model("masked_action_model", TorchMaskedActions)
 
-# env = HierarchicalEnv(env_config=None)
-# high_level_obs_space = env.observation_spaces['high_level_agent']
-# high_level_act_space = env.action_spaces['high_level_agent']
-
-# low_attk_obs_space = env.observation_spaces['low_attack_agent']
-# low_avoid_obs_space = env.observation_spaces['low_avoid_agent']\
-
-# low_attk_act_space = env.action_spaces['low_attack_agent']
-# low_avoid_act_space = env.action_spaces['low_avoid_agent']
 
 # For debugging purposes
 ray.init(local_mode=True)
@@ -113,6 +108,16 @@ def train_heuristic_hrl() -> None:
     """
     Train HRL hiearchial model
     """
+    env = HierarchicalEnv(env_config=None)
+    high_level_obs_space = env.observation_spaces['high_level_agent']
+    high_level_act_space = env.action_spaces['high_level_agent']
+
+    low_attk_obs_space = env.observation_spaces['low_attack_agent']
+    low_avoid_obs_space = env.observation_spaces['low_avoid_agent']\
+
+    low_attk_act_space = env.action_spaces['low_attack_agent']
+    low_avoid_act_space = env.action_spaces['low_avoid_agent']
+
     # Define the multi-agent RL training setup
     config = (
         PPOConfig()
@@ -216,6 +221,94 @@ def train_ppo_mask_hrl():
     tuner.fit()
 
 
+def train_ppo_mask_hrl_normalized():
+    """
+    Sets up and runs training of maskable PPO agents in a hierarchical RL environment
+    that uses a normalization wrapper to scale observations.
+
+    This function registers a normalized environment with RLlib, extracts the
+    observation and action spaces from a temporary instance, and builds a PPO config
+    that uses these spaces.
+    """
+    # First define an environment creator that returns your normalized environment.
+    def normalized_env_creator(env_config):
+        base_env = ActionMaskingHRLEnv(env_config=env_config)
+        # Wrap the environment so that observations are normalized.
+        return NormalizeObservationWrapper(base_env)
+
+    # Register the normalized environment with RLlib.
+    tune.register_env("normalized_mask_env", normalized_env_creator)
+
+    # Create a temporary environment instance to extract observation and action spaces.
+    temp_env = ActionMaskingHRLEnv(env_config={})
+
+    high_level_obs_space = temp_env.observation_spaces['high_level_agent']
+    high_level_act_space = temp_env.action_spaces['high_level_agent']
+
+    low_attk_obs_space = temp_env.observation_spaces['low_attack_agent']
+    low_avoid_obs_space = temp_env.observation_spaces['low_avoid_agent']
+
+    low_attk_act_space = temp_env.action_spaces['low_attack_agent']
+    low_avoid_act_space = temp_env.action_spaces['low_avoid_agent']
+
+    temp_env.close()  # Clean up the temporary environment.
+
+    # Define the run configuration for Ray Tune.
+    run_config = tune.RunConfig(
+        stop={"training_iteration": 100},
+        checkpoint_config=tune.CheckpointConfig(
+            checkpoint_frequency=20,
+            checkpoint_at_end=True,
+            num_to_keep=5,
+            checkpoint_score_attribute="episode_reward_mean",
+            checkpoint_score_order="max",
+        ),
+    )
+
+    # Build the PPO configuration.
+    config = (
+        PPOConfig()
+        # Use the registered normalized env.
+        .environment(env="mask_env")
+        .framework("torch")
+        .rl_module(
+            rl_module_spec=MultiRLModuleSpec(
+                rl_module_specs={
+                    "high_level_agent": RLModuleSpec(
+                        observation_space=high_level_obs_space,
+                        action_space=high_level_act_space,
+                        model_config={}
+                    ),
+                    "low_attack_agent": RLModuleSpec(
+                        module_class=ActionMaskingTorchRLModule,
+                        observation_space=low_attk_obs_space,
+                        action_space=low_attk_act_space,
+                        model_config={}
+                    ),
+                    "low_avoid_agent": RLModuleSpec(
+                        module_class=ActionMaskingTorchRLModule,
+                        observation_space=low_avoid_obs_space,
+                        action_space=low_avoid_act_space,
+                        model_config={}
+                    ),
+                }
+            )
+        )
+        .multi_agent(
+            policies=["high_level_agent",
+                      "low_attack_agent", "low_avoid_agent"],
+            policy_mapping_fn=policy_mapping_fn
+        )
+        .resources(num_gpus=1)
+        .env_runners(observation_filter="MeanStdFilter")
+    )
+
+    # Initialize and run the training using Ray Tune.
+    tuner = tune.Tuner("PPO", param_space=config, run_config=run_config)
+    tuner.fit()
+
+
 if __name__ == "__main__":
     # train_heuristic_hrl()
-    train_ppo_mask_hrl()
+    # train_ppo_mask_hrl()
+    train_ppo_mask_hrl_normalized()

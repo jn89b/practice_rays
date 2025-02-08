@@ -210,7 +210,6 @@ class HierarchicalEnv(MultiAgentEnv):
 
         # # 🔹 Step 4: Signal Termination for RLlib if Needed
         # terminateds["__all__"] = all(terminateds.values())
-
         return observations, rewards, terminateds, truncateds, {}
 
 
@@ -457,17 +456,39 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
             "low_avoid_agent": gym.spaces.Discrete(4)
         }
 
-        self.observation_spaces = {
+        # self.observation_spaces = {
+        #     "high_level_agent": gym.spaces.Box(low=low_high_obs, high=high_high_obs, dtype=np.float32),
+        #     "low_attack_agent": gym.spaces.Dict({
+        #         "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
+        #         "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_attack_agent"].n,), dtype=np.float32)
+        #     }),
+        #     "low_avoid_agent": gym.spaces.Dict({
+        #         "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
+        #         "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_avoid_agent"].n,), dtype=np.float32)
+        #     })
+        # }
+
+        # Define the per-agent observation spaces:
+        agent_obs_spaces = {
             "high_level_agent": gym.spaces.Box(low=low_high_obs, high=high_high_obs, dtype=np.float32),
             "low_attack_agent": gym.spaces.Dict({
                 "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
-                "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_attack_agent"].n,), dtype=np.float32)
+                "action_mask": gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(
+                                                  self.action_spaces["low_attack_agent"].n,),
+                                              dtype=np.float32)
             }),
             "low_avoid_agent": gym.spaces.Dict({
                 "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
-                "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_avoid_agent"].n,), dtype=np.float32)
+                "action_mask": gym.spaces.Box(low=0.0, high=1.0,
+                                              shape=(
+                                                  self.action_spaces["low_avoid_agent"].n,),
+                                              dtype=np.float32)
             })
         }
+
+        # Wrap the outer dictionary in a gym.spaces.Dict:
+        self.observation_spaces = gym.spaces.Dict(agent_obs_spaces)
 
         self.start_time: int = 0
         self.time_limit: int = 100
