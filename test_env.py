@@ -1,17 +1,22 @@
 import unittest
-#from .prisoner_guard_env import PrisonerGuardEnv
+# from .prisoner_guard_env import PrisonerGuardEnv
 from practice_rays.prisoner_guard_env import PrisonerGuardEnv
 from practice_rays.callbacks import EpisodeReturn, ExampleEnvCallback
-from practice_rays.hiearchial_env import HierarchicalEnv
+# from practice_rays.hiearchial_env import HierarchicalEnv
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
+from ray.rllib.examples.envs.classes.six_room_env import (
+    HierarchicalSixRoomEnv,
+    SixRoomEnv,
+)
 
 
 class TestGeneratedData(unittest.TestCase):
 
     def setUp(self):
         self.test_env = PrisonerGuardEnv()
+        self.hrl_env = HierarchicalEnv(env_config=None)
 
     def test_spawn_agents(self):
         self.assertTrue(self.test_env.guard_x >=
@@ -43,6 +48,17 @@ class TestGeneratedData(unittest.TestCase):
             print("type of rewards: ", type(rewards))
             if terminateds['__all__']:
                 break
+
+    def test_hrl_move(self):
+        self.hrl_env.reset()
+        n_steps = 30
+
+        actions = {"high_level_agent": 0}
+
+        for i in range(n_steps):
+            print("action: ", actions)
+
+            self.hrl_env.step(actions)
 
     # def test_train(self):
 
@@ -77,15 +93,6 @@ class TestGeneratedData(unittest.TestCase):
 
     #     algo = config.build()
     #     print(algo.train())
-    
-    def test_hrl(self):
-        env = HierarchicalEnv(env_config=None)
-        env.reset()
-        n_steps = 30
-        
-        for _ in range(n_steps):
-            action = env.action_spaces[env.current_player].sample()
-            print("action: ", action)
 
 
 if __name__ == '__main__':

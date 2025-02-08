@@ -3,7 +3,8 @@ import numpy as np
 from typing import List, Dict
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
-
+# https://github.com/ray-project/ray/blob/ed04ab71401874db8b2f4f91ca5737919259b950/rllib/examples/env/multi_agent.py#L31
+# https://discuss.ray.io/t/im-confused-about-how-policy-mapping-works-in-configuration/7001/3
 MIN_X: int = 0
 MAX_X: int = 10
 MIN_Y: int = 0
@@ -65,8 +66,8 @@ class PrisonerGuardEnv(MultiAgentEnv):
         self.guard_x: int = np.random.randint(MIN_X, MAX_X)
         self.guard_y: int = np.random.randint(MIN_Y, MAX_Y)
 
-        self.goal_x:int  = 6
-        self.goal_y:int  = 6
+        self.goal_x: int = 6
+        self.goal_y: int = 6
 
     def reset(self, *, seed=None, options=None) -> Dict[str, np.ndarray]:
         self.start_time = 0
