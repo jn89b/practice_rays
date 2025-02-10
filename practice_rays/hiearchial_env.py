@@ -457,19 +457,6 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
             "low_attack_agent": gym.spaces.Discrete(4),
             "low_avoid_agent": gym.spaces.Discrete(4)
         }
-
-        # self.observation_spaces = {
-        #     "high_level_agent": gym.spaces.Box(low=low_high_obs, high=high_high_obs, dtype=np.float32),
-        #     "low_attack_agent": gym.spaces.Dict({
-        #         "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
-        #         "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_attack_agent"].n,), dtype=np.float32)
-        #     }),
-        #     "low_avoid_agent": gym.spaces.Dict({
-        #         "observations": gym.spaces.Box(low=low_obs, high=high_obs, dtype=np.float32),
-        #         "action_mask": gym.spaces.Box(0.0, 1.0, shape=(self.action_spaces["low_avoid_agent"].n,), dtype=np.float32)
-        #     })
-        # }
-
         # Define the per-agent observation spaces:
         agent_obs_spaces = {
             "high_level_agent": gym.spaces.Box(low=low_high_obs, high=high_high_obs, dtype=np.float32),
@@ -502,7 +489,9 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
 
         self.old_distance_from_guard: float = self.compute_distance(
             self.prisoner_x, self.prisoner_y, self.guard_x, self.guard_y)
-
+        self.terminal_reward:int = 100
+        self.prisoner_won:bool = False
+        
         self.reset()
 
     def spawn_agents(self):
@@ -578,7 +567,8 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
             self.prisoner_x, self.prisoner_y, self.goal_x, self.goal_y)
         self.current_distance_to_goal: float = self.compute_distance(
             self.prisoner_x, self.prisoner_y, self.goal_x, self.goal_y)
-
+        
+        self.prisoner_won = False
         # Return high-level observation.
         observations = {agent: self.observe(agent) for agent in self.agents}
         return observations, {}
@@ -649,7 +639,11 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
             observation = {next_active_agent: self.observe(next_active_agent)}
             rewards["high_level_agent"] = -0.01
 
+            infos = {
+                "prisoner_won": self.prisoner_won
+            }
             return observation, rewards, terminateds, truncateds, infos
+        
         else:
             if self._high_level_action == ATTACK_IDX:
                 agent_policy = "low_attack_agent"
@@ -684,6 +678,7 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 rewards["high_level_agent"] = terminal_reward
                 rewards[agent_policy] = 1.0
                 terminateds = {"__all__": True}
+                self.prisoner_won = True
                 print("🏆 Prisoner reached the goal! Rewarding agent.")
             elif self.start_time >= self.time_limit:
                 rewards["high_level_agent"] = 0.0
@@ -720,6 +715,6 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
             observations = {
                 "high_level_agent": self.observe("high_level_agent")
             }
-            # infos = {agent: self.observe(agent) for agent in self.agents}
-            infos = {}
+            
+            
             return observations, rewards, terminateds, truncateds, infos

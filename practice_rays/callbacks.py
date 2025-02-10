@@ -6,7 +6,7 @@ from ray.rllib.callbacks.callbacks import RLlibCallback
 
 """
 Toy examples of how to use RLlib callbacks.
-
+https://discuss.ray.io/t/log-or-record-custom-env-data-via-rllib/4674
 """
 
 class EpisodeReturn(RLlibCallback):
@@ -39,7 +39,6 @@ class DemoCallback(RLlibCallback):
         self.prisoner_win: int = 0
         self.prisoner_loss: int = 0
         
-    
     def print_goal(self, env, print_goal: bool = True):    
         # If I want to grab a specific attribute from my environment such as
         # goal positon here's what I can do
@@ -47,6 +46,9 @@ class DemoCallback(RLlibCallback):
         goal_y = env.unwrapped.goal_y
         if print_goal:  
             print(f"Goal position: ({goal_x}, {goal_y})")
+            
+    def get_win(self, env) -> bool:
+        return env.unwrapped.prisoner_won
             
     def get_type(self, env):
         """
@@ -60,6 +62,20 @@ class DemoCallback(RLlibCallback):
             env = env
             
         return env
+
+    # def on_episode_start(self, *,
+    #                      episode) -> None:
+    #     """
+    #     """        
+    #     episode.hist_data["prisoner_wins"] = []
+    #     episode.hist_data["prisoner_losses"] = []
+    
+    def on_episode_start(
+        self, *, episode,  **kwargs
+    ):
+        episode.hist_data["prisoner_wins"] = []
+        episode.hist_data["prisoner_losses"] = []
+        print("Episode history data: ", episode.hist_data)
 
     def on_episode_step(self, *, episode, env, **kwargs) -> None:
         """
@@ -83,34 +99,54 @@ class DemoCallback(RLlibCallback):
 
         # let's log the win count
         high_level_reward  = rewards['high_level_agent'][0]
-        if high_level_reward >= 1:
-            self.prisoner_win += 1  
+        # who_won = infos["prisoner_won"]
+        # print(f"Prisoner won: {who_won}")
+        prisoner_won = self.get_win(env)
+        if prisoner_won:
+            self.prisoner_win += 1
         else:
             self.prisoner_loss += 1
+    
+        # # Log the theta1 degree value in the episode object, temporarily.
+        episode.hist_data["prisoner_wins"].append(self.prisoner_win)
+        episode.hist_data["prisoner_losses"].append(self.prisoner_loss)
         
+        prisoner_wins = episode.hist_data["prisoner_wins"]
+        prisoner_losses = episode.hist_data["prisoner_losses"]
+
+        sum_wins = sum(prisoner_wins)
+        sum_losses = sum(prisoner_losses)
+        
+        print("sum wins: ", sum_wins)
+        print("sum losses: ", sum_losses)
+        
+        # episode.add_temporary_timestep_data("prisoner_wins", self.prisoner_win)
+        # episode.add_temporary_timestep_data("prisoner_losses", self.prisoner_loss)
+       
         # print(f"Episode {episode.episode_id} ended with length {episode.length}")
 
-    def on_train_result(self, trainer, result: dict, **kwargs) -> None:
+    def on_train_result(self, result: dict, **kwargs) -> None:
         # https://discuss.ray.io/t/rllib-callbacks-to-get-custom-metrics-such-as-observation-reward-etc-in-each-episode-from-singleagentepisode-and-access-it-in-the-trainer/16022/2
         # Log the metrics for this iteration.
         result.setdefault("custom_metrics", {})
-        result["custom_metrics"]["prisoner_wins"] = self.prisoner_win
-        result["custom_metrics"]["prisoner_losses"] = self.prisoner_loss
+        # get win from episode  
+        # result["custom_metrics"]["prisoner_wins"] = self.prisoner_win
+        # result["custom_metrics"]["prisoner_losses"] = self.prisoner_loss
 
-        # Calculate win rate if there are any episodes.
-        total = self.prisoner_win + self.prisoner_loss
-        win_rate = self.prisoner_win / total if total > 0 else 0.0
-        result["custom_metrics"]["prisoner_win_rate"] = win_rate
+        # # Calculate win rate if there are any episodes.
+        # total = self.prisoner_win + self.prisoner_loss
+        # win_rate = self.prisoner_win / total if total > 0 else 0.0
+        # result["custom_metrics"]["prisoner_win_rate"] = win_rate
 
-        print(
-            f"Iteration {result.get('training_iteration', 'unknown')}: "
-            f"Win rate = {win_rate:.2f} "
-            f"(Wins: {self.prisoner_win}, Losses: {self.prisoner_loss})"
-        )
+        # print(
+        #     f"Iteration {result.get('training_iteration', 'unknown')}: "
+        #     f"Win rate = {win_rate:.2f} "
+        #     f"(Wins: {self.prisoner_win}, Losses: {self.prisoner_loss})"
+        # )
 
-        # Reset the counters for the next iteration.
-        self.prisoner_win = 0
-        self.prisoner_loss = 0        
+        # # Reset the counters for the next iteration.
+        # self.prisoner_win = 0
+        # self.prisoner_loss = 0        
         
     # def on_episode_end(self, *, episode, metrics_logger, **kwargs):
     #     # Get all the logged theta1 degree values and average them.

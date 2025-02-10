@@ -235,7 +235,7 @@ def train_ppo_mask_hrl_normalized():
     that uses these spaces.
     """
     # First define an environment creator that returns your normalized environment.
-    def normalized_env_creator(env_config):
+    def normalized_env_creator(env_config)  :
         base_env = ActionMaskingHRLEnv(env_config=env_config)
         # Wrap the environment so that observations are normalized.
         return NormalizeObservationWrapper(base_env)
