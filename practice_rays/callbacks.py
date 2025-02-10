@@ -63,19 +63,17 @@ class DemoCallback(RLlibCallback):
             
         return env
 
-    # def on_episode_start(self, *,
-    #                      episode) -> None:
-    #     """
-    #     """        
-    #     episode.hist_data["prisoner_wins"] = []
-    #     episode.hist_data["prisoner_losses"] = []
-    
     def on_episode_start(
-        self, *, episode,  **kwargs
-    ):
-        episode.hist_data["prisoner_wins"] = []
-        episode.hist_data["prisoner_losses"] = []
-        print("Episode history data: ", episode.hist_data)
+        self,
+        *,
+        worker: "RolloutWorker",
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Episode,
+        **kwargs,
+    ) -> None:
+        # create an empty list for keeping the frames
+        episode.hist_data["frames"] = []
 
     def on_episode_step(self, *, episode, env, **kwargs) -> None:
         """

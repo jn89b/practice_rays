@@ -259,7 +259,7 @@ def train_ppo_mask_hrl_normalized():
 
     # Define the run configuration for Ray Tune.
     run_config = tune.RunConfig(
-        stop={"training_iteration": 100},
+        stop={"training_iteration": 10000},
         checkpoint_config=tune.CheckpointConfig(
             checkpoint_frequency=20,
             checkpoint_at_end=True,
@@ -306,9 +306,9 @@ def train_ppo_mask_hrl_normalized():
         .resources(num_gpus=1)
         .env_runners(observation_filter="MeanStdFilter",
                      num_env_runners=2)
-        .callbacks(
-            callbacks_class=DemoCallback
-        )
+        # .callbacks(
+        #     callbacks_class=DemoCallback
+        # )
     )
 
     # Initialize and run the training using Ray Tune.

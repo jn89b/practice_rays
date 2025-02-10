@@ -676,7 +676,7 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 print("🚧 Agent has been caught! Penalizing.")
             elif self.prisoner_x == self.goal_x and self.prisoner_y == self.goal_y:
                 rewards["high_level_agent"] = terminal_reward
-                rewards[agent_policy] = 1.0
+                rewards[agent_policy] = terminal_reward
                 terminateds = {"__all__": True}
                 self.prisoner_won = True
                 print("🏆 Prisoner reached the goal! Rewarding agent.")
@@ -703,8 +703,7 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 # so if we are increasing distance from guard that is good
                 # if we are decreasing distance to goal that is good
                 # We are also clipping the reward to be between -1 and 1
-                intermediate_reward = np.tanh(
-                    -(delta_distance_to_goal) + (delta_distance_from_guard*0.2))
+                intermediate_reward = -(delta_distance_to_goal) + (delta_distance_from_guard*0.2)
 
                 rewards[agent_policy] = intermediate_reward
                 rewards["high_level_agent"] = intermediate_reward
