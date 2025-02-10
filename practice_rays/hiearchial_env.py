@@ -7,8 +7,8 @@ from ray.rllib.utils.typing import MultiAgentDict
 
 MIN_X: int = 0
 MIN_Y: int = 0
-MAX_X: int = 10
-MAX_Y: int = 10
+MAX_X: int = 8
+MAX_Y: int = 8
 
 ATTACK_IDX: int = 0
 AVOID_IDX: int = 1
@@ -432,9 +432,11 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
         self.possible_agents: List[str] = self.agents[:]
 
         # observation space for high level agent
-        low_obs: np.ndarray = np.array([MIN_X, MIN_Y, 0], dtype=np.float32)
+        low_obs: np.ndarray = np.array(
+            [MIN_X, MIN_Y, 0, -MAX_X, -MAX_Y], dtype=np.float32)
         high_obs: np.ndarray = np.array(
-            [MAX_X, MAX_Y, np.sqrt(MAX_X ** 2 + MAX_Y ** 2)], dtype=np.float32)
+            [MAX_X, MAX_Y, np.sqrt(MAX_X ** 2 + MAX_Y ** 2),
+             MAX_X, MAX_Y], dtype=np.float32)
 
         low_high_obs: np.ndarray = np.array([0, 0], dtype=np.float32)
         high_high_obs: np.ndarray = np.array(
@@ -544,8 +546,12 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 (self.guard_x - self.prisoner_x) ** 2 + (self.guard_y - self.prisoner_y) ** 2)
             return np.array([distance_to_goal, distance_from_guard], dtype=np.float32)
         elif agent in ["low_attack_agent", "low_avoid_agent"]:
+
+            dx = self.guard_x - self.prisoner_x
+            dy = self.guard_y - self.prisoner_y
             observation = np.array(
-                [self.prisoner_x, self.prisoner_y, distance_to_goal], dtype=np.float32)
+                [self.prisoner_x, self.prisoner_y, distance_to_goal,
+                 dx, dy], dtype=np.float32)
             action_mask = self._generate_action_mask(agent)
             return {"observations": observation, "action_mask": action_mask}
         else:
@@ -676,13 +682,14 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 print("🚧 Agent has been caught! Penalizing.")
             elif self.prisoner_x == self.goal_x and self.prisoner_y == self.goal_y:
                 rewards["high_level_agent"] = terminal_reward
-                rewards[agent_policy] = terminal_reward
+                rewards[agent_policy] = 1.0
                 terminateds = {"__all__": True}
                 print("🏆 Prisoner reached the goal! Rewarding agent.")
             elif self.start_time >= self.time_limit:
                 rewards["high_level_agent"] = 0.0
                 rewards[agent_policy] = 0.0
                 truncateds = {"__all__": True}
+                terminateds = {"__all__": True}
                 print("⏳ Time limit reached. Ending episode.")
             else:
                 # so we want a reward funciton based on what policy we are
@@ -702,10 +709,10 @@ class ActionMaskingHRLEnv(MultiAgentEnv):
                 # if we are decreasing distance to goal that is good
                 # We are also clipping the reward to be between -1 and 1
                 intermediate_reward = np.tanh(
-                    -(delta_distance_to_goal) + delta_distance_from_guard)
+                    -(delta_distance_to_goal) + (delta_distance_from_guard*0.2))
 
                 rewards[agent_policy] = intermediate_reward
-
+                rewards["high_level_agent"] = intermediate_reward
                 self.old_distance_from_guard = distance_from_guard
                 self.old_distance_to_goal = distance_to_goal
 
