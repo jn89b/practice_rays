@@ -152,6 +152,6 @@ class PrisonerGuardEnv(MultiAgentEnv):
             print("Max steps reached")
 
         observations = {agent: self.observe(agent) for agent in self.agents}
-        infos = {agent: {} for agent in self.agents}
+        infos =
 
         return observations, rewards, terminateds, {}, infos

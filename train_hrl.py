@@ -2,11 +2,13 @@ import torch
 import gymnasium
 import numpy as np
 import torch.nn as nn
+import ray
+import numpy as np
+
 from ray.rllib.examples.rl_modules.classes.action_masking_rlm import (
     ActionMaskingTorchRLModule,
 )
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
-import ray
 
 from typing import Set, Dict
 from ray import tune
@@ -25,8 +27,7 @@ from ray.rllib.utils.torch_utils import FLOAT_MAX, FLOAT_MIN
 from ray.rllib.models import ModelCatalog
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 from ray.rllib.connectors.env_to_module.mean_std_filter import MeanStdFilter
-
-import numpy as np
+from practice_rays.callbacks import EpisodeReturn, ExampleEnvCallback, DemoCallback
 
 
 class TorchMaskedActions(TorchModelV2, nn.Module):
@@ -85,8 +86,11 @@ def create_env(config):
 ModelCatalog.register_custom_model("masked_action_model", TorchMaskedActions)
 
 
+ray.shutdown()
 # For debugging purposes
+
 ray.init(local_mode=True)
+# ray.init()
 
 # tune.register_env("env", HierarchicalEnv)
 tune.register_env("mask_env", ActionMaskingHRLEnv)
@@ -300,7 +304,11 @@ def train_ppo_mask_hrl_normalized():
             policy_mapping_fn=policy_mapping_fn
         )
         .resources(num_gpus=1)
-        .env_runners(observation_filter="MeanStdFilter")
+        .env_runners(observation_filter="MeanStdFilter",
+                     num_env_runners=2)
+        .callbacks(
+            callbacks_class=DemoCallback
+        )
     )
 
     # Initialize and run the training using Ray Tune.
